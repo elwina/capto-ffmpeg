@@ -50,17 +50,19 @@ Tauri transparent window --------->  (pixels in DXGI frames; NOT FFmpeg text)
 
 | Name | Use |
 |------|-----|
+| `file` | output path + remux temp file |
 | `pipe` | `pipe:0` screen frames |
 | `tcp` | localhost PCM from Capto |
-| `file` | output path + remux temp file |
+
+Configure order: **`--disable-everything` first**, then `--enable-network` + `--enable-protocol=file|pipe|tcp`. Enabling protocols before `disable-everything` is a no-op (empty `-protocols` list).
 
 ### 2.2 Devices / demuxers / formats (input)
 
 | Name | Use |
 |------|-----|
 | `rawvideo` | Screen stdin demuxer |
-| `f32le` | PCM demuxer |
-| `dshow` | Webcam indev + `-list_devices` for device enumeration |
+| `pcm_f32le` (configure) / runtime name `f32le` | PCM demuxer (`-f f32le`) |
+| `dshow` | Webcam indev + `-list_devices` |
 | `mov` / `mp4` demux | Frag MP4 remux input (`-i … -c copy`) |
 
 Pixel formats involved (must be available in build):

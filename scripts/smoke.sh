@@ -52,12 +52,19 @@ need_in() {
 
 need_in -encoders libx264 h264_nvenc h264_amf gif aac
 need_in -filters scale null overlay hflip fps split palettegen paletteuse volume amix
-# demuxers / devices
+# demuxers / devices / protocols (fatal for Capto if missing)
 text_dev="$("${RUN[@]}" "${EXE}" -hide_banner -devices 2>&1 || true)"
 text_demux="$("${RUN[@]}" "${EXE}" -hide_banner -demuxers 2>&1 || true)"
+text_proto="$("${RUN[@]}" "${EXE}" -hide_banner -protocols 2>&1 || true)"
 echo "${text_dev}" | grep -Fq dshow || { echo "missing dshow indev" >&2; exit 1; }
 echo "ok devices: dshow"
-echo "${text_demux}" | grep -Eq 'rawvideo|f32le' || { echo "missing rawvideo/f32le demuxer" >&2; exit 1; }
+echo "${text_demux}" | grep -Eq 'rawvideo' || { echo "missing rawvideo demuxer" >&2; exit 1; }
+echo "${text_demux}" | grep -Eq 'f32le' || { echo "missing f32le demuxer" >&2; exit 1; }
 echo "ok demuxers: rawvideo/f32le"
+for p in file pipe tcp; do
+  echo "${text_proto}" | grep -Eq "(^|[[:space:]])${p}($|[[:space:]])" \
+    || { echo "missing protocol: ${p}" >&2; echo "${text_proto}" >&2; exit 1; }
+  echo "ok protocol: ${p}"
+done
 
 echo "smoke passed"

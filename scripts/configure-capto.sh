@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Print Capto whitelist configure args (sourced or executed for inspection).
+# IMPORTANT: --disable-everything MUST come before any --enable-protocol/demuxer/…
 # shellcheck disable=SC2034
 
 configure_capto_args() {
@@ -27,11 +28,6 @@ configure_capto_args() {
 --enable-static
 --disable-shared
 --disable-autodetect
---enable-gpl
---enable-libx264
---enable-ffnvcodec
---enable-nvenc
---enable-amf
 --disable-doc
 --disable-htmlpages
 --disable-manpages
@@ -39,13 +35,19 @@ configure_capto_args() {
 --disable-txtpages
 --disable-ffplay
 --disable-ffprobe
+--disable-everything
+--enable-gpl
+--enable-libx264
+--enable-ffnvcodec
+--enable-nvenc
+--enable-amf
+--enable-network
 --enable-protocol=file
 --enable-protocol=pipe
 --enable-protocol=tcp
---disable-everything
 --enable-indev=dshow
 --enable-demuxer=rawvideo
---enable-demuxer=f32le
+--enable-demuxer=pcm_f32le
 --enable-demuxer=mov
 --enable-muxer=mp4
 --enable-muxer=gif
@@ -83,6 +85,4 @@ configure_capto_args() {
 EOF
 }
 
-# Note: f32le is typically a demuxer named "f32le" under lavf — enable via:
-# --enable-demuxer=f32le if available in this FFmpeg version.
 # QSV omitted from first cut to protect single-exe DLL audit (see CAPABILITIES).
