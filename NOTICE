@@ -1,0 +1,11 @@
+# Third-party notices
+
+This repository builds and redistributes FFmpeg and linked libraries
+(typically under the GNU GPL when including x264).
+
+When shipping a binary from this project:
+
+1. Include the FFmpeg and dependency license texts that apply to the build.
+2. Do not claim a host application's MIT (or other) license covers this binary.
+3. Hardware encoders (NVENC / QSV / AMF) may LoadLibrary vendor driver DLLs at
+   runtime; those drivers are not redistributed here.

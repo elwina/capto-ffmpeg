@@ -1,0 +1,19 @@
+# Build trees
+/build/
+/prefix/
+/out/
+/deps-src/
+*.exe
+*.a
+*.o
+*.pc
+
+# Local toolchains
+/zig-*/
+/.zig-cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
