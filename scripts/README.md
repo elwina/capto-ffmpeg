@@ -1,11 +1,27 @@
-# Placeholder — real recipes land before first CI build.
+# Build scripts (Windows + MSYS2)
 
-## Planned scripts
+Host: **Windows**. Shell: **MSYS2 bash** (`C:\msys64\usr\bin\bash.exe`).
+Compiler: system **Zig** (`winget`) via wrappers → `zig cc -target x86_64-windows-gnu`.
 
-- `zig-env.sh` — export `CC`/`CXX`/`AR` via pinned Zig
-- `build-deps.sh` — static x264 (+ optional headers)
-- `configure-capto.sh` — `--disable-everything` whitelist
-- `build-windows.sh` — orchestrate deps → ffmpeg → strip
-- `audit-dlls.sh` — PE import audit (system DLLs only)
+## One-shot
 
-Do not run a full build until Capto’s FFmpeg argv surface stabilizes.
+```powershell
+$env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Links;" + $env:PATH
+C:\msys64\usr\bin\bash.exe -lc 'cd /d/AIWorkspace/capto-ffmpeg && ./scripts/build-all.sh'
+```
+
+Steps: `build-deps.sh` → `build-windows.sh` → `audit-dlls.sh` → `smoke.sh`
+
+Output: `out/ffmpeg.exe` (~6MB) + Tauri alias name.
+
+## Prerequisites
+
+- Zig 0.16.0
+- MSYS2: `make`, `pkgconf`, `git`, `nasm`, `binutils` (`strings`)
+- Optional: WinGet NASM
+
+## Notes
+
+- QSV omitted in v1 (DLL risk); NVENC/AMF headers-only
+- `patch-ffmpeg-makefile.sh` links `aom_film_grain.o` for H264_SEI (upstream hole)
+- No FreeType / drawtext

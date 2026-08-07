@@ -4,8 +4,17 @@ Capto 专用、精简、尽量静态独立的 Windows `ffmpeg.exe` 构建与发�
 
 本仓与 Capto 主工程分离：单独 tag / GitHub Release，产物供桌面端作为 Tauri `externalBin` sidecar 使用。
 
-> 状态：仓库已初始化，**构建脚本尚未落地**。  
-> **能力目录以 [docs/CAPABILITIES.md](docs/CAPABILITIES.md) 为准**（对照 Capto 主仓 argv 维护）。
+> 状态：Windows + Zig 0.16.0 本地构建已跑通（`out/ffmpeg.exe`）。  
+> **能力目录以 [docs/CAPABILITIES.md](docs/CAPABILITIES.md) 为准。**
+
+## 构建
+
+```powershell
+$env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Links;" + $env:PATH
+C:\msys64\usr\bin\bash.exe -lc 'cd /d/AIWorkspace/capto-ffmpeg && ./scripts/build-all.sh'
+```
+
+详见 [scripts/README.md](scripts/README.md)。
 
 ## 目标
 

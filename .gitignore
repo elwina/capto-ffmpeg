@@ -3,6 +3,7 @@
 /prefix/
 /out/
 /deps-src/
+/.tools/
 *.exe
 *.a
 *.o
