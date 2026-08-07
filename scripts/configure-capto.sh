@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Print Capto whitelist configure args (sourced or executed for inspection).
-# IMPORTANT: --disable-everything MUST come before any --enable-protocol/demuxer/…
+# Capto whitelist. --disable-everything MUST come before any --enable-protocol/…
 # shellcheck disable=SC2034
 
 configure_capto_args() {
-  # $1=prefix $2=unused-target $3=cc-wrapper $4=cxx-wrapper $5=ar-wrapper $6=ranlib-wrapper
   local prefix="$1"
   local cc="$3"
   local cxx="$4"
@@ -45,7 +43,6 @@ configure_capto_args() {
 --enable-protocol=file
 --enable-protocol=pipe
 --enable-protocol=tcp
---enable-indev=dshow
 --enable-demuxer=rawvideo
 --enable-demuxer=pcm_f32le
 --enable-demuxer=mov
@@ -64,9 +61,6 @@ configure_capto_args() {
 --enable-bsf=h264_mp4toannexb
 --enable-bsf=aac_adtstoasc
 --enable-filter=scale
---enable-filter=null
---enable-filter=overlay
---enable-filter=hflip
 --enable-filter=fps
 --enable-filter=split
 --enable-filter=palettegen
@@ -77,7 +71,6 @@ configure_capto_args() {
 --enable-filter=aresample
 --enable-swscale
 --enable-swresample
---enable-avdevice
 --enable-avfilter
 --enable-avformat
 --enable-avcodec
@@ -85,4 +78,5 @@ configure_capto_args() {
 EOF
 }
 
-# QSV omitted from first cut to protect single-exe DLL audit (see CAPABILITIES).
+# No dshow/avdevice/overlay/hflip: Capto composites webcam in-process.
+# QSV omitted for single-exe DLL audit.

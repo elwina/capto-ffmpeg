@@ -22,21 +22,20 @@ C:\msys64\usr\bin\bash.exe -lc 'cd /d/AIWorkspace/capto-ffmpeg && ./scripts/buil
 - 工具链：钉死版本的 **Zig `zig cc`**，目标 `x86_64-windows-gnu`
 - CI 导入表审计：仅允许 Windows 系统 DLL；GPU 驱动运行时 `LoadLibrary`
 
-## 能力一览（MVP）
+## 能力一览（MVP · 2026-08-08）
 
 完整表见 [docs/CAPABILITIES.md](docs/CAPABILITIES.md)。摘要：
 
 | Capto 功能 | FFmpeg |
 |------------|--------|
-| 屏采（DXGI） | `rawvideo` + `bgra` + `pipe:0` |
+| 屏采（DXGI）+ 进程内摄像头 PiP | `rawvideo` + `bgra` + `pipe:0`（**无 dshow**） |
 | 麦 / 环回 | `f32le` + `tcp` → `volume`/`amix` → `aac` |
-| 摄像头 PiP | `dshow` + `yuyv422` → `scale`/`hflip`/`overlay` |
-| 点击 / 按键 overlay | **不经过 FFmpeg**（透明窗进 DXGI 帧） |
-| MP4 | `libx264` / NVENC / QSV / AMF；frag moov → `-c copy` faststart remux |
-| GIF | `palettegen`/`paletteuse` + `gif` |
+| 点击 / 按键 overlay | **不经过 FFmpeg** |
+| MP4 | `libx264` / NVENC / AMF；frag → faststart remux |
+| GIF | `scale`/`fps`/`palette*` + `gif` |
 | 仅音频 | `-vn` + `aac` → m4a |
 
-**不进 MVP 包：** `gdigrab`、FreeType/`drawtext`、`libx265`、WASAPI/dshow 音频采集。
+**本版去掉：** `dshow`、`overlay`/`hflip`/`null`、FreeType、`libx265`、QSV。
 
 ## 构建期依赖（计划）
 
