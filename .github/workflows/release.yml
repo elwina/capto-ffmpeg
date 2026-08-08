@@ -34,16 +34,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download x86_64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ffmpeg-windows-x86_64
           path: dist
 
       - name: Download aarch64 artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ffmpeg-windows-aarch64
           path: dist
@@ -58,12 +58,12 @@ jobs:
           test -f dist/ffmpeg-windows-aarch64.exe
 
       - name: Attest x86_64
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/ffmpeg-windows-x86_64.exe
 
       - name: Attest aarch64
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/ffmpeg-windows-aarch64.exe
 

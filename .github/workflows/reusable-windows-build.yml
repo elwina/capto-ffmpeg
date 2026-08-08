@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -54,7 +54,7 @@ jobs:
             ${{ matrix.extra_pkgs }}
 
       - name: Cache Zig toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .tools
           key: zig-${{ matrix.runner }}-${{ hashFiles('versions.env') }}
@@ -87,7 +87,7 @@ jobs:
           ls -lh out/release/
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ffmpeg-windows-${{ matrix.arch }}
           path: out/release/
