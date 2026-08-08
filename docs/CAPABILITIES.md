@@ -87,7 +87,8 @@ pix: `bgra`, `yuv420p`
 |--------|------------|---------|
 | NVIDIA | `ffnvcodec` headers | `nvcuda` / NVENC DLLs via `LoadLibrary` |
 | AMD | AMF headers | `amfrt64.dll` via `LoadLibrary` |
-| Intel | open-source **libvpl** dispatcher (static `.a`) | Intel VPL / Media SDK impl DLLs |
+| Intel | open-source **libvpl** dispatcher (static `.a`, **x86_64 only**) | Intel VPL / Media SDK impl DLLs |
+
 
 Do **not** ship vendor GPU runtimes or MinGW/x264 DLLs inside the Capto sidecar.
 

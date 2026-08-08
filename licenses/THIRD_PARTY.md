@@ -1,8 +1,8 @@
 # Third-party license notes
 
 Pinned versions live in [`versions.env`](../versions.env). Full license texts
-ship with each upstream project; this file is a redistribution map for Capto
-Release packaging.
+This file is a redistribution map for Release packaging.
+
 
 ## FFmpeg
 

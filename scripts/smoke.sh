@@ -12,6 +12,12 @@ if [[ ! -f "${EXE}" ]]; then
   exit 1
 fi
 
+ENCODERS_BASE=(libx264 h264_nvenc h264_amf hevc_nvenc hevc_amf gif aac)
+ENCODERS=("${ENCODERS_BASE[@]}")
+if [[ "${ENABLE_LIBVPL}" == "1" ]]; then
+  ENCODERS+=(h264_qsv hevc_qsv)
+fi
+
 RUN=()
 if [[ "$(uname -s)" == "Linux" ]]; then
   if command -v wine64 >/dev/null 2>&1; then
@@ -20,7 +26,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     RUN=(wine)
   else
     echo "no wine; doing PE string smoke only"
-    for needle in libx264 h264_nvenc h264_amf h264_qsv hevc_nvenc hevc_amf hevc_qsv aac gif scale palettegen amix rawvideo f32le; do
+    for needle in "${ENCODERS[@]}" scale palettegen amix rawvideo f32le; do
       if ! strings "${EXE}" | grep -q "${needle}"; then
         echo "missing string: ${needle}" >&2
         exit 1
@@ -49,14 +55,20 @@ need_in() {
   done
 }
 
-need_in -encoders libx264 h264_nvenc h264_amf h264_qsv hevc_nvenc hevc_amf hevc_qsv gif aac
+need_in -encoders "${ENCODERS[@]}"
 need_in -filters scale fps split palettegen paletteuse volume amix
-# Soft HEVC must stay out — Capto HEVC is GPU-only
 if echo "$("${RUN[@]}" "${EXE}" -hide_banner -encoders 2>&1 || true)" | grep -Fq libx265; then
   echo "fail: libx265 must not be present (HEVC is GPU-only)" >&2
   exit 1
 fi
 echo "ok: no libx265"
+if [[ "${ENABLE_LIBVPL}" != "1" ]]; then
+  if echo "$("${RUN[@]}" "${EXE}" -hide_banner -encoders 2>&1 || true)" | grep -Eq 'h264_qsv|hevc_qsv'; then
+    echo "fail: QSV encoders present but ENABLE_LIBVPL=0" >&2
+    exit 1
+  fi
+  echo "ok: no QSV (aarch64 / libvpl disabled)"
+fi
 
 text_demux="$("${RUN[@]}" "${EXE}" -hide_banner -demuxers 2>&1 || true)"
 text_proto="$("${RUN[@]}" "${EXE}" -hide_banner -protocols 2>&1 || true)"
@@ -69,9 +81,8 @@ for p in file pipe tcp; do
   echo "ok protocol: ${p}"
 done
 
-# Capto no longer needs dshow in the sidecar
 if echo "$("${RUN[@]}" "${EXE}" -hide_banner -devices 2>&1 || true)" | grep -Fq dshow; then
   echo "warn: dshow still present (unused by Capto recording)" >&2
 fi
 
-echo "smoke passed"
+echo "smoke passed (${ARCH}, release=${RELEASE_NAME})"

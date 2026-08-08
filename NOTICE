@@ -1,14 +1,13 @@
 # Third-party notices (capto-ffmpeg)
 
-This repository builds and redistributes a **Windows `ffmpeg.exe`** configured
-for Capto. The binary links **GPL** components (notably **libx264** via FFmpeg
-`--enable-gpl`).
+This repository builds and redistributes a **Windows `ffmpeg.exe`**. The binary
+links **GPL** components (notably **libx264** via FFmpeg `--enable-gpl`).
 
-**Capto (the desktop app) may be MIT (or another license).** That does **not**
-cover this sidecar binary. Ship `LICENSE` + this `NOTICE` (and/or
-`licenses/`) with any redistribution of `ffmpeg.exe`.
+Downstream apps may use a different license; that does **not** cover this
+binary. Ship `LICENSE` + this `NOTICE` (and/or `licenses/`) with any
+redistribution of the executable.
 
-## Components in a typical Capto build
+## Components in a typical build
 
 | Component | Role in this build | Upstream license (summary) |
 |-----------|--------------------|----------------------------|
@@ -37,4 +36,4 @@ GPU drivers on the machine.
 2. Include this `NOTICE` (and optionally `licenses/THIRD_PARTY.md`).
 3. Provide corresponding source (this repo + pinned dependency tags) or a
    written offer, as required by GPL when distributing binaries.
-4. Do not claim Capto’s application license covers `ffmpeg.exe`.
+4. Do not claim a host application's non-GPL license covers this `ffmpeg.exe`.

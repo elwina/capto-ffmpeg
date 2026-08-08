@@ -1,6 +1,8 @@
 # Build trees
 /build/
+/build-*/
 /prefix/
+/prefix-*/
 /out/
 /deps-src/
 /.tools/

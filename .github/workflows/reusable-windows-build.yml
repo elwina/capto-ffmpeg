@@ -1,0 +1,95 @@
+name: Reusable Windows build
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: windows-latest
+            msystem: MINGW64
+            pkg_prefix: mingw-w64-x86_64
+            mingw_bin: /mingw64/bin
+            extra_pkgs: mingw-w64-x86_64-gcc
+          - arch: aarch64
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            pkg_prefix: mingw-w64-clang-aarch64
+            mingw_bin: /clangarm64/bin
+            extra_pkgs: mingw-w64-clang-aarch64-clang
+
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git
+            make
+            pkgconf
+            nasm
+            tar
+            unzip
+            curl
+            ${{ matrix.pkg_prefix }}-cmake
+            ${{ matrix.pkg_prefix }}-ninja
+            ${{ matrix.pkg_prefix }}-binutils
+            ${{ matrix.pkg_prefix }}-python
+            ${{ matrix.extra_pkgs }}
+
+      - name: Cache Zig toolchain
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: zig-${{ matrix.runner }}-${{ hashFiles('versions.env') }}
+
+      - name: Build FFmpeg
+        env:
+          ARCH_OVERRIDE: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          export PATH="${{ matrix.mingw_bin }}:${PATH}"
+          bash ./scripts/build-all.sh
+
+      - name: Collect metadata + checksums
+        id: meta
+        env:
+          ARCH_OVERRIDE: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source ./scripts/common.sh
+          test -f "out/${RELEASE_NAME}"
+          test -f out/ffmpeg.exe
+          sha256="$(sha256sum "out/${RELEASE_NAME}" | awk '{print $1}')"
+          {
+            echo "${sha256}  ${RELEASE_NAME}"
+          } > "out/SHA256SUMS-${ARCH}"
+          cp -f LICENSE NOTICE versions.env "out/"
+          mkdir -p "out/release"
+          cp -f "out/${RELEASE_NAME}" "out/SHA256SUMS-${ARCH}" LICENSE NOTICE versions.env "out/release/"
+          ls -lh out/release/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-windows-${{ matrix.arch }}
+          path: out/release/
+          if-no-files-found: error
+          retention-days: 14

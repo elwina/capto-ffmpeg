@@ -6,15 +6,28 @@
 
 configure_capto_args() {
   local prefix="$1"
+  local target="$2"
   local cc="$3"
   local cxx="$4"
   local ar="$5"
   local ranlib="$6"
+  local arch="$7"
+  local enable_libvpl="${8:-0}"
+
+  local qsv_flags=""
+  if [[ "${enable_libvpl}" == "1" ]]; then
+    qsv_flags=$(cat <<'QSV'
+--enable-libvpl
+--enable-encoder=h264_qsv
+--enable-encoder=hevc_qsv
+QSV
+)
+  fi
 
   cat <<EOF
 --prefix=${prefix}
 --target-os=mingw32
---arch=x86_64
+--arch=${arch}
 --cross-prefix=
 --cc=${cc}
 --cxx=${cxx}
@@ -41,7 +54,7 @@ configure_capto_args() {
 --enable-ffnvcodec
 --enable-nvenc
 --enable-amf
---enable-libvpl
+${qsv_flags}
 --enable-network
 --enable-protocol=file
 --enable-protocol=pipe
@@ -55,10 +68,8 @@ configure_capto_args() {
 --enable-encoder=libx264
 --enable-encoder=h264_nvenc
 --enable-encoder=h264_amf
---enable-encoder=h264_qsv
 --enable-encoder=hevc_nvenc
 --enable-encoder=hevc_amf
---enable-encoder=hevc_qsv
 --enable-encoder=gif
 --enable-encoder=aac
 --enable-decoder=rawvideo
@@ -88,4 +99,4 @@ EOF
 }
 
 # No dshow/avdevice/overlay/hflip: Capto composites webcam in-process.
-# No libx265: HEVC is GPU-only (nvenc/amf/qsv).
+# No libx265: HEVC is GPU-only (nvenc/amf/qsv on x86_64).

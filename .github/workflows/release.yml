@@ -1,0 +1,105 @@
+name: Release
+
+# Publish only from version tags: v0.1.0, v1.2.3, …
+# Flow: CI green on main → tag → rebuild both arches → attest → Release.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build + attest only (skip GitHub Release)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/reusable-windows-build.yml
+
+  publish:
+    name: Attest + GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-windows-x86_64
+          path: dist
+
+      - name: Download aarch64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-windows-aarch64
+          path: dist
+
+      - name: Merge checksums
+        run: |
+          set -euo pipefail
+          ls -lah dist
+          cat dist/SHA256SUMS-x86_64 dist/SHA256SUMS-aarch64 > dist/SHA256SUMS
+          cat dist/SHA256SUMS
+          test -f dist/ffmpeg-windows-x86_64.exe
+          test -f dist/ffmpeg-windows-aarch64.exe
+
+      - name: Attest x86_64
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/ffmpeg-windows-x86_64.exe
+
+      - name: Attest aarch64
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/ffmpeg-windows-aarch64.exe
+
+      - name: Create GitHub Release
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') &&
+          (github.event_name == 'push' || inputs.dry_run == false)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            Minimal Windows FFmpeg builds for screen-recording workloads.
+
+            | Asset | Arch |
+            |-------|------|
+            | `ffmpeg-windows-x86_64.exe` | Intel/AMD 64-bit |
+            | `ffmpeg-windows-aarch64.exe` | Windows on ARM |
+
+            - **FFmpeg pin:** see bundled `versions.env`
+            - **Provenance:** GitHub Artifact Attestations (Sigstore)
+            - **Verify:** `sha256sum -c SHA256SUMS`
+            - **Attestation:** `gh attestation verify ffmpeg-windows-x86_64.exe -R ${{ github.repository }}`
+
+            Notes:
+            - x86_64: NVENC / AMF / QSV (libvpl) hooks + `libx264`
+            - aarch64: NVENC / AMF hooks + `libx264` (no Intel QSV / libvpl)
+            - HEVC is GPU-only (no `libx265`)
+            - GPL-2.0 — ship with `LICENSE` + `NOTICE`
+          files: |
+            dist/ffmpeg-windows-x86_64.exe
+            dist/ffmpeg-windows-aarch64.exe
+            dist/SHA256SUMS
+            dist/LICENSE
+            dist/NOTICE
+            dist/versions.env
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

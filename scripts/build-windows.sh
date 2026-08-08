@@ -14,11 +14,14 @@ if [[ ! -f "${PREFIX}/lib/pkgconfig/x264.pc" && ! -f "${PREFIX}/lib/libx264.a" ]
   echo "missing x264 in PREFIX; run scripts/build-deps.sh first" >&2
   exit 1
 fi
+if [[ "${ENABLE_LIBVPL}" == "1" && ! -f "${PREFIX}/lib/pkgconfig/vpl.pc" ]]; then
+  echo "missing libvpl in PREFIX; run scripts/build-deps.sh first" >&2
+  exit 1
+fi
 
-echo "==> FFmpeg ${FFMPEG_TAG}"
+echo "==> FFmpeg ${FFMPEG_TAG} (${ARCH} / ${TARGET})"
 FF_SRC="${DEPS_SRC}/ffmpeg"
 if [[ -d "${FF_SRC}/.git" ]]; then
-  # Discard local patches (e.g. H264_SEI makefile fix) before retargeting the tag.
   git -C "${FF_SRC}" reset --hard HEAD >/dev/null 2>&1 || true
   git -C "${FF_SRC}" clean -fdq >/dev/null 2>&1 || true
   git -C "${FF_SRC}" fetch --depth 1 origin tag "${FFMPEG_TAG}" || \
@@ -29,7 +32,6 @@ else
   mkdir -p "${FF_SRC}"
   git -C "${FF_SRC}" init
   git -C "${FF_SRC}" remote add origin https://github.com/FFmpeg/FFmpeg.git
-  # Shallow tag fetch (full clone is huge / slow)
   if ! git -C "${FF_SRC}" fetch --depth 1 origin tag "${FFMPEG_TAG}"; then
     echo "primary fetch failed; retrying via ghproxy" >&2
     git -C "${FF_SRC}" remote set-url origin https://mirror.ghproxy.com/https://github.com/FFmpeg/FFmpeg.git
@@ -43,19 +45,26 @@ rm -rf "${FF_BUILD}"
 mkdir -p "${FF_BUILD}"
 cd "${FF_BUILD}"
 
-mapfile -t BASE_ARGS < <(configure_capto_args "${PREFIX}" "${TARGET}" "${CC}" "${CXX}" "${AR}" "${RANLIB}" | grep -v '^$' | grep -v '^#')
+mapfile -t BASE_ARGS < <(
+  configure_capto_args "${PREFIX}" "${TARGET}" "${CC}" "${CXX}" "${AR}" "${RANLIB}" \
+    "${ARCH}" "${ENABLE_LIBVPL}" | grep -v '^$' | grep -v '^#'
+)
 
-# Export AMF include path (FFmpeg looks for AMF/core/Factory.h with -I)
 export CFLAGS="${CFLAGS:-} -I${PREFIX}/include"
 export LDFLAGS="${LDFLAGS:-} -L${PREFIX}/lib -static"
 export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
 export PKG_CONFIG="pkg-config --static"
 
+extra_libs="-lx264"
+if [[ "${ENABLE_LIBVPL}" == "1" ]]; then
+  extra_libs="-lx264 -lvpl -lstdc++ -lole32 -lgdi32 -luuid"
+fi
+
 echo "==> configure"
 # shellcheck disable=SC2068
 "${FF_SRC}/configure" \
   "${BASE_ARGS[@]}" \
-  --extra-libs="-lx264 -lvpl -lstdc++ -lole32 -lgdi32 -luuid" \
+  --extra-libs="${extra_libs}" \
   --enable-w32threads \
   --disable-pthreads \
   || {
@@ -64,25 +73,26 @@ echo "==> configure"
     exit 1
   }
 
-# Upstream attaches aom_film_grain.o to HEVC_SEI only; H264_SEI still calls it.
 "${SCRIPT_DIR}/patch-ffmpeg-makefile.sh"
-# libvpl is MinGW C++; final link must use g++ (Zig lld cannot resolve libstdc++ EH).
-"${SCRIPT_DIR}/patch-link-gpp.sh" ffbuild/config.mak
+if [[ "${ENABLE_LIBVPL}" == "1" ]]; then
+  # libvpl is MinGW C++; final link must use g++ (Zig lld cannot resolve libstdc++ EH).
+  "${SCRIPT_DIR}/patch-link-gpp.sh" ffbuild/config.mak
+fi
 
 echo "==> make"
 make -j"${jobs}"
 
 mkdir -p "${OUT}"
 cp -f ffmpeg.exe "${OUT}/ffmpeg.exe" 2>/dev/null || cp -f ffmpeg "${OUT}/ffmpeg.exe"
-cp -f "${OUT}/ffmpeg.exe" "${OUT}/${TAURI_BIN_ALIAS}"
+cp -f "${OUT}/ffmpeg.exe" "${OUT}/${RELEASE_NAME}"
 
-# Strip if available via zig/llvm
 if command -v llvm-strip >/dev/null 2>&1; then
   llvm-strip "${OUT}/ffmpeg.exe" || true
 elif [[ -x "${ZIG}" ]]; then
   "${ZIG}" objcopy --strip-all "${OUT}/ffmpeg.exe" "${OUT}/ffmpeg.exe.stripped" 2>/dev/null \
     && mv -f "${OUT}/ffmpeg.exe.stripped" "${OUT}/ffmpeg.exe" || true
+  cp -f "${OUT}/ffmpeg.exe" "${OUT}/${RELEASE_NAME}"
 fi
 
-ls -lh "${OUT}/ffmpeg.exe"
-echo "built ${OUT}/ffmpeg.exe"
+ls -lh "${OUT}/ffmpeg.exe" "${OUT}/${RELEASE_NAME}"
+echo "built ${OUT}/${RELEASE_NAME}"

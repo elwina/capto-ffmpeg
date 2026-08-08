@@ -20,7 +20,15 @@ C:\msys64\usr\bin\bash.exe -lc 'cd /path/to/capto-ffmpeg && ./scripts/build-all.
 | Audit | `audit-dlls.sh` — import table allowlist |
 | Smoke | `smoke.sh` — encoders / filters / protocols; asserts **no libx265** |
 
-Output: `out/ffmpeg.exe` + `TAURI_BIN_ALIAS` copy.
+Output: `out/ffmpeg.exe` + `out/ffmpeg-windows-<arch>.exe`
+
+
+- **CI** (`.github/workflows/ci.yml`): PR / `main` builds **x86_64 + aarch64**,
+  audit + smoke, uploads artifacts (no Release).
+- **Release** (`.github/workflows/release.yml`): tag `vX.Y.Z` rebuilds both,
+  attests, publishes `ffmpeg-windows-x86_64.exe` + `ffmpeg-windows-aarch64.exe`.
+- Shared: `.github/workflows/reusable-windows-build.yml` (matrix).
+- Arch override locally: `ARCH_OVERRIDE=aarch64 ./scripts/build-all.sh`
 
 ## Prerequisites
 
