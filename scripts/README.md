@@ -1,27 +1,36 @@
 # Build scripts (Windows + MSYS2)
 
-Host: **Windows**. Shell: **MSYS2 bash** (`C:\msys64\usr\bin\bash.exe`).
-Compiler: system **Zig** (`winget`) via wrappers → `zig cc -target x86_64-windows-gnu`.
+Host: **Windows**. Shell: **MSYS2 bash** (`C:\msys64\usr\bin\bash.exe`).  
+Compile: **Zig** `zig cc -target x86_64-windows-gnu`.  
+Final link (libvpl C++): MinGW **g++** via `patch-link-gpp.sh`.
 
 ## One-shot
 
 ```powershell
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Links;" + $env:PATH
-C:\msys64\usr\bin\bash.exe -lc 'cd /d/AIWorkspace/capto-ffmpeg && ./scripts/build-all.sh'
+C:\msys64\usr\bin\bash.exe -lc 'cd /path/to/capto-ffmpeg && ./scripts/build-all.sh'
 ```
 
-Steps: `build-deps.sh` → `build-windows.sh` → `audit-dlls.sh` → `smoke.sh`
+| Step | Script |
+|------|--------|
+| Deps | `build-deps.sh` — x264, ffnvcodec, AMF headers, libvpl |
+| AMF headers | `fetch-amf-headers.sh` (API + jsDelivr; avoids huge AMF clone) |
+| FFmpeg | `build-windows.sh` — Capto whitelist configure + make |
+| Link patch | `patch-link-gpp.sh` — MinGW g++ as `LD`/`LDXX` |
+| Audit | `audit-dlls.sh` — import table allowlist |
+| Smoke | `smoke.sh` — encoders / filters / protocols; asserts **no libx265** |
 
-Output: `out/ffmpeg.exe` (~6MB) + Tauri alias name.
+Output: `out/ffmpeg.exe` + `TAURI_BIN_ALIAS` copy.
 
 ## Prerequisites
 
-- Zig 0.16.0
-- MSYS2: `make`, `pkgconf`, `git`, `nasm`, `binutils` (`strings`)
-- Optional: WinGet NASM
+- Zig version from `versions.env`
+- MSYS2: `make`, `pkgconf`, `git`, `nasm`, `binutils`
+- MinGW-w64: `cmake`, `ninja`, `gcc`/`g++` (libvpl)
+- Python 3 on PATH (AMF header fetch)
 
 ## Notes
 
-- QSV omitted in v1 (DLL risk); NVENC/AMF headers-only
-- `patch-ffmpeg-makefile.sh` links `aom_film_grain.o` for H264_SEI (upstream hole)
-- No FreeType / drawtext
+- GPU: NVENC/AMF = headers + runtime `LoadLibrary`; QSV = static **libvpl** dispatcher
+- `patch-ffmpeg-makefile.sh` — H264_SEI ↔ `aom_film_grain.o` if still needed upstream
+- No FreeType / `drawtext` / `dshow`

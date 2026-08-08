@@ -117,13 +117,45 @@ chmod +x "${WRAP}/zig-cc" "${WRAP}/zig-c++" "${WRAP}/zig-ar" "${WRAP}/zig-ranlib
 
 # If ZIG path has spaces or Windows form, rewrite wrappers with a safer path
 ZIG_U="$(cygpath -u "${ZIG}" 2>/dev/null || echo "${ZIG}")"
+# MinGW C++ EH when linking libvpl (built with g++) into Zig/lld binaries.
+GCCLIB="$(echo /mingw64/lib/gcc/x86_64-w64-mingw32/*/libgcc.a | awk '{print $1}')"
+GCCEH="$(echo /mingw64/lib/gcc/x86_64-w64-mingw32/*/libgcc_eh.a | awk '{print $1}')"
 cat > "${WRAP}/zig-cc" <<EOF
 #!/usr/bin/env bash
-exec "${ZIG_U}" cc -target ${TARGET} "\$@"
+# Rewrite -lstdc++ -> MinGW static libstdc++ + libgcc_eh only when linking.
+args=()
+linking=1
+for a in "\$@"; do
+  case "\$a" in
+    -c|-E|-S|-emit-ast) linking=0 ;;
+  esac
+done
+for a in "\$@"; do
+  if [[ "\$linking" -eq 1 && "\$a" == "-lstdc++" ]]; then
+    args+=(/mingw64/lib/libstdc++.a "${GCCEH}" "${GCCLIB}")
+  else
+    args+=("\$a")
+  fi
+done
+exec "${ZIG_U}" cc -target ${TARGET} "\${args[@]}"
 EOF
 cat > "${WRAP}/zig-c++" <<EOF
 #!/usr/bin/env bash
-exec "${ZIG_U}" c++ -target ${TARGET} "\$@"
+args=()
+linking=1
+for a in "\$@"; do
+  case "\$a" in
+    -c|-E|-S|-emit-ast) linking=0 ;;
+  esac
+done
+for a in "\$@"; do
+  if [[ "\$linking" -eq 1 && "\$a" == "-lstdc++" ]]; then
+    args+=(/mingw64/lib/libstdc++.a "${GCCEH}" "${GCCLIB}")
+  else
+    args+=("\$a")
+  fi
+done
+exec "${ZIG_U}" c++ -target ${TARGET} "\${args[@]}"
 EOF
 cat > "${WRAP}/zig-ar" <<EOF
 #!/usr/bin/env bash

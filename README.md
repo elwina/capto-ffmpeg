@@ -2,60 +2,76 @@
 
 Capto 专用、精简、尽量静态独立的 Windows `ffmpeg.exe` 构建与发布仓库。
 
-本仓与 Capto 主工程分离：单独 tag / GitHub Release，产物供桌面端作为 Tauri `externalBin` sidecar 使用。
+Minimal, Capto-oriented Windows FFmpeg sidecar (Tauri `externalBin`). Separate
+from the Capto app repo so GPL tooling stays isolated from Capto’s app license.
 
-> 状态：Windows + Zig 0.16.0 本地构建已跑通（`out/ffmpeg.exe`）。  
-> **能力目录以 [docs/CAPABILITIES.md](docs/CAPABILITIES.md) 为准。**
+> **Status:** Windows + Zig 0.16.0 · FFmpeg **n9.0** · DLL audit + smoke green  
+> Capability whitelist: [docs/CAPABILITIES.md](docs/CAPABILITIES.md)
 
-## 构建
+## Why this exists
+
+| Common “full” FFmpeg builds | This repo |
+|-----------------------------|-----------|
+| Large, many unused codecs/devices | `--disable-everything` + Capto whitelist |
+| Often many companion DLLs | Single `ffmpeg.exe`, system-DLL audit |
+| Random system/PATH installs | Pinned tags in `versions.env` |
+| Soft HEVC (`libx265`) common | HEVC = **GPU only** (nvenc / amf / qsv) |
+
+## What’s enabled (summary)
+
+- **Pipe / network:** `file`, `pipe`, `tcp` · demux `rawvideo`, `f32le` · mux `mp4` / `gif` / `m4a`
+- **H.264:** `libx264` + `h264_nvenc` / `h264_amf` / `h264_qsv`
+- **HEVC:** `hevc_nvenc` / `hevc_amf` / `hevc_qsv` only (**no `libx265`**)
+- **GIF / audio:** palette filters · `aac`
+- **GPU policy:** NVIDIA/AMF headers-only hooks; Intel **libvpl** dispatcher static; vendor GPU runtimes `LoadLibrary` at encode time
+- **Not included:** `dshow`, FreeType/`drawtext`, overlay/hflip (Capto composites webcam in-process)
+
+## Build (Windows + MSYS2)
 
 ```powershell
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Links;" + $env:PATH
-C:\msys64\usr\bin\bash.exe -lc 'cd /d/AIWorkspace/capto-ffmpeg && ./scripts/build-all.sh'
+C:\msys64\usr\bin\bash.exe -lc 'cd /path/to/capto-ffmpeg && ./scripts/build-all.sh'
 ```
 
-详见 [scripts/README.md](scripts/README.md)。
+Pipeline: `build-deps.sh` → `build-windows.sh` → `audit-dlls.sh` → `smoke.sh`  
+Output: `out/ffmpeg.exe` (+ Tauri alias from `TAURI_BIN_ALIAS` in `versions.env`)
 
-## 目标
+Details: [scripts/README.md](scripts/README.md)
 
-- 单个 `ffmpeg.exe`：第三方库静态链进，零附带 MinGW / x264 DLL
-- 工具链：钉死版本的 **Zig `zig cc`**，目标 `x86_64-windows-gnu`
-- CI 导入表审计：仅允许 Windows 系统 DLL；GPU 驱动运行时 `LoadLibrary`
+### Host tools
 
-## 能力一览（MVP · 2026-08-08）
+- Zig (pinned in `versions.env`)
+- MSYS2: `make`, `pkgconf`, `git`, `nasm`, `binutils`
+- MinGW `cmake` / `ninja` / `g++` (for static **libvpl** + final C++ link)
 
-完整表见 [docs/CAPABILITIES.md](docs/CAPABILITIES.md)。摘要：
+## Consume from Capto
 
-| Capto 功能 | FFmpeg |
-|------------|--------|
-| 屏采（DXGI）+ 进程内摄像头 PiP | `rawvideo` + `bgra` + `pipe:0`（**无 dshow**） |
-| 麦 / 环回 | `f32le` + `tcp` → `volume`/`amix` → `aac` |
-| 点击 / 按键 overlay | **不经过 FFmpeg** |
-| MP4 | `libx264` / NVENC / AMF；frag → faststart remux |
-| GIF | `scale`/`fps`/`palette*` + `gif` |
-| 仅音频 | `-vn` + `aac` → m4a |
+Copy Release/`out` binary into Capto’s sidecar directory (see Capto’s
+`scripts/copy-ffmpeg.ps1` or equivalent). Capto should keep probing encoders;
+missing GPU runtimes simply mark HW encoders unavailable.
 
-**本版去掉：** `dshow`、`overlay`/`hflip`/`null`、FreeType、`libx265`、QSV。
-
-## 构建期依赖（计划）
-
-| 依赖 | 方式 |
-|------|------|
-| FFmpeg 源码 | 钉死 tag，白名单 configure |
-| x264 | 静态 `.a` 链进 |
-| ffnvcodec-headers / AMF headers | 仅头文件 |
-| QSV | 优先 runtime-load；破坏单文件则裁掉 |
-| Zig + nasm | CI 工具，不进发布包 |
-
-## 仓库布局（规划）
+## Repository layout
 
 ```text
-docs/CAPABILITIES.md          # 白名单（已维护）
-versions.env
-scripts/…                     # 构建尚未接线
-.github/workflows/…
+versions.env              # pinned FFmpeg / x264 / headers / libvpl
+docs/CAPABILITIES.md      # whitelist synced with Capto recording argv
+scripts/                  # deps, configure, build, audit, smoke
+licenses/THIRD_PARTY.md   # dependency map
+LICENSE                   # GPL-2.0 (combined binary)
+NOTICE                    # redistribution notes
+out/ffmpeg.exe            # local build artifact (not committed)
 ```
 
-## 许可
+## License
 
-FFmpeg + libx264 → **GPL**。本仓发布 LICENSE / NOTICE；与 Capto（MIT）主体许可分离。
+**Redistributable `ffmpeg.exe` (this build): GPL-2.0** — see [LICENSE](LICENSE)
+and [NOTICE](NOTICE). FFmpeg is configured with `--enable-gpl` and links
+**libx264**.
+
+- Do **not** treat Capto’s application license (e.g. MIT) as covering this binary.
+- When shipping Capto with this sidecar, include `LICENSE` + `NOTICE` (and keep
+  corresponding source / pins available per GPL).
+- Vendor GPU drivers are **not** redistributed; see NOTICE.
+
+Build scripts in this repo are provided to produce that GPL binary; treat the
+**shipped artifact** as GPL.

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Capto whitelist. --disable-everything MUST come before any --enable-protocol/…
+# GPU vendors: headers / VPL dispatcher only — vendor runtimes LoadLibrary at encode time.
+# HEVC: hardware encoders only (no libx265).
 # shellcheck disable=SC2034
 
 configure_capto_args() {
@@ -39,6 +41,7 @@ configure_capto_args() {
 --enable-ffnvcodec
 --enable-nvenc
 --enable-amf
+--enable-libvpl
 --enable-network
 --enable-protocol=file
 --enable-protocol=pipe
@@ -52,13 +55,19 @@ configure_capto_args() {
 --enable-encoder=libx264
 --enable-encoder=h264_nvenc
 --enable-encoder=h264_amf
+--enable-encoder=h264_qsv
+--enable-encoder=hevc_nvenc
+--enable-encoder=hevc_amf
+--enable-encoder=hevc_qsv
 --enable-encoder=gif
 --enable-encoder=aac
 --enable-decoder=rawvideo
 --enable-decoder=pcm_f32le
 --enable-parser=h264
+--enable-parser=hevc
 --enable-parser=aac
 --enable-bsf=h264_mp4toannexb
+--enable-bsf=hevc_mp4toannexb
 --enable-bsf=aac_adtstoasc
 --enable-filter=scale
 --enable-filter=fps
@@ -79,4 +88,4 @@ EOF
 }
 
 # No dshow/avdevice/overlay/hflip: Capto composites webcam in-process.
-# QSV omitted for single-exe DLL audit.
+# No libx265: HEVC is GPU-only (nvenc/amf/qsv).

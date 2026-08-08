@@ -18,6 +18,9 @@ fi
 echo "==> FFmpeg ${FFMPEG_TAG}"
 FF_SRC="${DEPS_SRC}/ffmpeg"
 if [[ -d "${FF_SRC}/.git" ]]; then
+  # Discard local patches (e.g. H264_SEI makefile fix) before retargeting the tag.
+  git -C "${FF_SRC}" reset --hard HEAD >/dev/null 2>&1 || true
+  git -C "${FF_SRC}" clean -fdq >/dev/null 2>&1 || true
   git -C "${FF_SRC}" fetch --depth 1 origin tag "${FFMPEG_TAG}" || \
     git -C "${FF_SRC}" fetch --depth 1 origin "${FFMPEG_TAG}"
   git -C "${FF_SRC}" checkout -q FETCH_HEAD
@@ -52,7 +55,7 @@ echo "==> configure"
 # shellcheck disable=SC2068
 "${FF_SRC}/configure" \
   "${BASE_ARGS[@]}" \
-  --extra-libs="-lx264" \
+  --extra-libs="-lx264 -lvpl -lstdc++ -lole32 -lgdi32 -luuid" \
   --enable-w32threads \
   --disable-pthreads \
   || {
@@ -63,6 +66,8 @@ echo "==> configure"
 
 # Upstream attaches aom_film_grain.o to HEVC_SEI only; H264_SEI still calls it.
 "${SCRIPT_DIR}/patch-ffmpeg-makefile.sh"
+# libvpl is MinGW C++; final link must use g++ (Zig lld cannot resolve libstdc++ EH).
+"${SCRIPT_DIR}/patch-link-gpp.sh" ffbuild/config.mak
 
 echo "==> make"
 make -j"${jobs}"

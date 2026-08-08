@@ -20,7 +20,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     RUN=(wine)
   else
     echo "no wine; doing PE string smoke only"
-    for needle in libx264 h264_nvenc h264_amf aac gif scale palettegen amix rawvideo f32le; do
+    for needle in libx264 h264_nvenc h264_amf h264_qsv hevc_nvenc hevc_amf hevc_qsv aac gif scale palettegen amix rawvideo f32le; do
       if ! strings "${EXE}" | grep -q "${needle}"; then
         echo "missing string: ${needle}" >&2
         exit 1
@@ -49,8 +49,14 @@ need_in() {
   done
 }
 
-need_in -encoders libx264 h264_nvenc h264_amf gif aac
+need_in -encoders libx264 h264_nvenc h264_amf h264_qsv hevc_nvenc hevc_amf hevc_qsv gif aac
 need_in -filters scale fps split palettegen paletteuse volume amix
+# Soft HEVC must stay out — Capto HEVC is GPU-only
+if echo "$("${RUN[@]}" "${EXE}" -hide_banner -encoders 2>&1 || true)" | grep -Fq libx265; then
+  echo "fail: libx265 must not be present (HEVC is GPU-only)" >&2
+  exit 1
+fi
+echo "ok: no libx265"
 
 text_demux="$("${RUN[@]}" "${EXE}" -hide_banner -demuxers 2>&1 || true)"
 text_proto="$("${RUN[@]}" "${EXE}" -hide_banner -protocols 2>&1 || true)"
