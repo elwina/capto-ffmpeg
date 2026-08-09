@@ -1,6 +1,7 @@
 name: Release
 
-# Publish only from version tags: v0.1.0, v1.2.3, …
+# Publish only from version tags: v0.1.0-n9.0, v1.0.0-n9.0, …
+# Major tracks Capto; suffix is FFmpeg pin (FFMPEG_TAG). Glob v*.*.* matches these.
 # Flow: CI green on main → tag → rebuild both arches → attest → Release.
 on:
   push:
