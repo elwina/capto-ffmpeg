@@ -40,6 +40,12 @@ fi
 
 "${RUN[@]}" "${EXE}" -hide_banner -version | head -n 5
 
+if ! "${RUN[@]}" "${EXE}" -hide_banner -version | grep -Fq "version ${FFMPEG_TAG}-capto"; then
+  echo "fail: expected 'version ${FFMPEG_TAG}-capto' in -version output (missing --extra-version=capto)" >&2
+  exit 1
+fi
+echo "ok: version string branded ${FFMPEG_TAG}-capto"
+
 need_in() {
   local section="$1"
   shift
