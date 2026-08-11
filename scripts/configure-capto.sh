@@ -35,6 +35,7 @@ QSV
 --ranlib=${ranlib}
 --pkg-config=pkg-config
 --pkg-config-flags=--static
+--extra-version=capto
 --extra-cflags=-I${prefix}/include
 --extra-ldflags=-L${prefix}/lib
 --extra-ldexeflags=-static
